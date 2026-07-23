@@ -38,6 +38,7 @@ import com.donzheng.adaptivevideowallpaper.wallpaper.VideoWallpaperService
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.rememberCoroutineScope
+import com.donzheng.adaptivevideowallpaper.ACTION_UPDATE_WALLPAPER
 import com.donzheng.adaptivevideowallpaper.data.WallpaperPreferences
 import com.donzheng.adaptivevideowallpaper.data.dataStore
 import kotlinx.coroutines.launch
@@ -78,17 +79,7 @@ fun WallpaperPickerScreen() {
         }
     }
     LaunchedEffect(selectedLightVideoUri) {
-        selectedLightVideoUri?.let { uri ->
-            lightPlayer.setMediaItem(
-                MediaItem.fromUri(uri)
-            )
-            lightPlayer.repeatMode = Player.REPEAT_MODE_ONE
-            lightPlayer.volume = 0f
-
-            lightPlayer.prepare()
-            lightPlayer.play()
-        }
-
+        selectedLightVideoUri?.let(lightPlayer::playVideo)
     }
 
     LaunchedEffect(Unit) {
@@ -97,17 +88,7 @@ fun WallpaperPickerScreen() {
         }
     }
     LaunchedEffect(selectedDarkVideoUri) {
-        selectedDarkVideoUri?.let { uri ->
-            darkPlayer.setMediaItem(
-                MediaItem.fromUri(uri)
-            )
-            darkPlayer.repeatMode = Player.REPEAT_MODE_ONE
-            darkPlayer.volume = 0f
-
-            darkPlayer.prepare()
-            darkPlayer.play()
-        }
-
+        selectedDarkVideoUri?.let(darkPlayer::playVideo)
     }
 
     val lightVideoPicker = rememberLauncherForActivityResult(
@@ -143,66 +124,39 @@ fun WallpaperPickerScreen() {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(24.dp),
+            .padding(
+                horizontal = 24.dp,
+                vertical = 48.dp
+            ),
 
-        verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
         Text(
             "Adaptive Video Wallpaper",
             style = MaterialTheme.typography.headlineMedium
         )
 
+        Spacer(Modifier.height(64.dp))
+
+        VideoPickerSection(
+            "Select Light Wallpaper",
+            lightPlayer,
+            onPickVideo = {
+                lightVideoPicker.launch(arrayOf("video/*"))
+            }
+        )
+
         Spacer(Modifier.height(32.dp))
 
-        Button(
-            onClick = {
-                lightVideoPicker.launch(
-                    arrayOf("video/*")
-                )
-            }
-        ) {
-            Text("Select Light Video")
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        AndroidView(
-            factory = { context ->
-                val lightPlayerView = PlayerView(context)
-
-                lightPlayerView.player = lightPlayer
-                lightPlayerView.useController = false
-                lightPlayerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-
-                lightPlayerView
+        VideoPickerSection(
+            "Select Dark Wallpaper",
+            darkPlayer,
+            onPickVideo = {
+                darkVideoPicker.launch(arrayOf("video/*"))
             }
         )
 
-        Button(
-            onClick = {
-                darkVideoPicker.launch(
-                    arrayOf("video/*")
-                )
-            }
-        ) {
-            Text("Select Dark Video")
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        AndroidView(
-            factory = { context ->
-                val darkPlayerView = PlayerView(context)
-
-                darkPlayerView.player = darkPlayer
-                darkPlayerView.useController = false
-                darkPlayerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-
-                darkPlayerView
-            }
-        )
+        Spacer(Modifier.height(32.dp))
 
         Button(
             onClick = {
@@ -224,4 +178,45 @@ fun WallpaperPickerScreen() {
             Text("Preview & Apply")
         }
     }
+}
+
+private fun ExoPlayer.playVideo(uri: Uri) {
+    setMediaItem(MediaItem.fromUri(uri))
+    repeatMode = Player.REPEAT_MODE_ONE
+    volume = 0f
+    prepare()
+    play()
+}
+
+@OptIn(UnstableApi::class)
+@Composable
+private fun VideoPreview(
+    player: ExoPlayer
+) {
+    AndroidView(
+        factory = { context ->
+            PlayerView(context).apply {
+                this.player = player
+                useController = false
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            }
+        }
+    )
+}
+
+@Composable
+private fun VideoPickerSection(
+    title: String,
+    player: ExoPlayer,
+    onPickVideo: () -> Unit
+) {
+    Button(
+        onClick = onPickVideo
+    ) {
+        Text(title)
+    }
+
+    Spacer(Modifier.height(8.dp))
+
+    VideoPreview(player)
 }
